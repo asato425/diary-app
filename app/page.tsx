@@ -6,11 +6,16 @@ import {
   TaskLog,
   TomorrowTask,
   DailyEntry,
+  ScheduledTask,
   getTasks,
   getCategories,
   getEntries,
   saveEntry,
   getYesterdayEntry,
+  getScheduledTasks,
+  saveScheduledTask,
+  deleteScheduledTask,
+  getScheduledTasksForDate,
   Category,
 } from "./lib/storage";
 import TomorrowTaskSelector from "./components/TomorrowTaskSelector";
@@ -32,8 +37,20 @@ export default function Home() {
   const [tomorrowTasks, setTomorrowTasks] = useState<TomorrowTask[]>([]);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [scheduledTasks, setScheduledTasks] = useState<ScheduledTask[]>([]);
+  const [newScheduleTaskId, setNewScheduleTaskId] = useState("");
+  const [newScheduleStartDate, setNewScheduleStartDate] = useState("");
+  const [newScheduleEndDate, setNewScheduleEndDate] = useState("");
+  const [newSchedulePlan, setNewSchedulePlan] = useState("");
 
-  const today = new Date().toLocaleDateString("ja-JP");
+  const todayDate = new Date();
+  const today = todayDate.toLocaleDateString("ja-JP");
+  const todayLabel = todayDate.toLocaleDateString("ja-JP", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -63,6 +80,8 @@ export default function Home() {
         setTaskLogs(initialLogs);
         setTomorrowTasks([]);
       }
+      const scheduled = await getScheduledTasks();
+      setScheduledTasks(scheduled);
       setLoading(false);
     };
     load();
@@ -103,6 +122,37 @@ export default function Home() {
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const addScheduledTask = async () => {
+    if (!newScheduleTaskId || !newScheduleStartDate) return;
+    const scheduled: ScheduledTask = {
+      id: Date.now().toString(),
+      taskId: newScheduleTaskId,
+      startDate: newScheduleStartDate,
+      endDate: newScheduleEndDate || newScheduleStartDate,
+      plan: newSchedulePlan,
+    };
+    await saveScheduledTask(scheduled);
+    setScheduledTasks((prev) => [...prev, scheduled]);
+    setNewScheduleTaskId("");
+    setNewScheduleStartDate("");
+    setNewScheduleEndDate("");
+    setNewSchedulePlan("");
+  };
+
+  const handleDeleteScheduledTask = async (id: string) => {
+    await deleteScheduledTask(id);
+    setScheduledTasks((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const handleUpdateScheduledTask = async (id: string, plan: string) => {
+    const updated = scheduledTasks.map((s) =>
+      s.id === id ? { ...s, plan } : s
+    );
+    setScheduledTasks(updated);
+    const target = updated.find((s) => s.id === id);
+    if (target) await saveScheduledTask(target);
+  };
+
   const getTask = (taskId: string) => tasks.find((t) => t.id === taskId);
   const getCategory = (categoryId: string) => categories.find((c) => c.id === categoryId);
 
@@ -119,9 +169,9 @@ export default function Home() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-bold text-zinc-800">今日の記録</h1>
-        <span className="text-sm text-zinc-400">{today}</span>
+        <p className="text-base text-zinc-500">{todayLabel}</p>
       </div>
 
       {/* 今日のタスク */}

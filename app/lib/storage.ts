@@ -198,3 +198,55 @@ export const getYesterdayEntry = async (): Promise<DailyEntry | null> => {
   yesterday.setDate(yesterday.getDate() - 1);
   return getEntryByDate(yesterday.toLocaleDateString("ja-JP"));
 };
+
+
+export type ScheduledTask = {
+  id: string;
+  taskId: string;
+  startDate: string;
+  endDate: string;
+  plan: string;
+};
+
+export const getScheduledTasks = async (): Promise<ScheduledTask[]> => {
+  const { data, error } = await supabase.from("scheduled_tasks").select("*");
+  if (error) return [];
+  return data.map((d) => ({
+    id: d.id,
+    taskId: d.task_id,
+    startDate: d.start_date,
+    endDate: d.end_date ?? d.start_date,
+    plan: d.plan ?? "",
+  }));
+};
+
+export const saveScheduledTask = async (task: ScheduledTask): Promise<void> => {
+  await supabase.from("scheduled_tasks").upsert({
+    id: task.id,
+    task_id: task.taskId,
+    start_date: task.startDate,
+    end_date: task.endDate,
+    plan: task.plan,
+  });
+};
+
+export const deleteScheduledTask = async (id: string): Promise<void> => {
+  await supabase.from("scheduled_tasks").delete().eq("id", id);
+};
+
+// 指定日に有効な予定を取得（startDate <= date <= endDate）
+export const getScheduledTasksForDate = async (date: string): Promise<ScheduledTask[]> => {
+  const { data, error } = await supabase
+    .from("scheduled_tasks")
+    .select("*")
+    .lte("start_date", date)
+    .gte("end_date", date);
+  if (error) return [];
+  return data.map((d) => ({
+    id: d.id,
+    taskId: d.task_id,
+    startDate: d.start_date,
+    endDate: d.end_date ?? d.start_date,
+    plan: d.plan ?? "",
+  }));
+};
