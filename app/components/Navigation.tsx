@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 
 const navItems = [
   { href: "/", label: "今日の記録" },
-  { href: "/schedule", label: "予定管理" },
   { href: "/tasks", label: "タスク管理" },
   { href: "/history", label: "履歴" },
   { href: "/analytics", label: "分析" },
+  { href: "/schedule", label: "予定管理" },
 ];
 
 export default function Navigation() {
