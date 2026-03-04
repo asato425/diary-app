@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Daily Log
 
-## Getting Started
+日々の記録・タスク管理・振り返りのためのWebアプリ。
 
-First, run the development server:
+## 機能
 
+- **今日の記録** - 前日に設定したタスクをチェックリスト形式で記録。達成度・作業時間・学んだことを入力して保存。
+- **予定管理** - タスクに対して期間を指定して予定を登録。指定日になると今日の記録に自動反映される。
+- **タスク管理** - カテゴリとタスクを事前登録。カテゴリにはプリセットカラーを設定可能。
+- **履歴** - 週・月単位で過去の記録を振り返る。
+- **分析** - カテゴリ別の合計時間・タスク別の達成度をグラフで可視化。
+
+## 技術スタック
+
+- **フロントエンド**: Next.js / React / TypeScript / Tailwind CSS
+- **データベース**: Supabase (PostgreSQL)
+- **デプロイ**: Vercel
+
+## セットアップ
+
+### 1. リポジトリをクローン
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/asato425/diary-app.git
+cd diary-app
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. 依存パッケージをインストール
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. 環境変数を設定
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+`.env.local`を作成して以下を記述：
+```
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-## Learn More
+### 4. Supabaseでテーブルを作成
 
-To learn more about Next.js, take a look at the following resources:
+Supabase の SQL Editor で以下を実行：
+```sql
+create table categories (
+  id text primary key,
+  name text not null,
+  color text not null
+);
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+create table tasks (
+  id text primary key,
+  name text not null,
+  category_id text references categories(id) on delete cascade
+);
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+create table daily_entries (
+  id text primary key,
+  date text not null unique,
+  learned text default '',
+  memo text default ''
+);
 
-## Deploy on Vercel
+create table task_logs (
+  id text primary key,
+  entry_id text references daily_entries(id) on delete cascade,
+  task_id text references tasks(id) on delete cascade,
+  plan text default '',
+  content text default '',
+  achievement text default 'not_done',
+  minutes integer default 0
+);
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+create table tomorrow_tasks (
+  id text primary key,
+  entry_id text references daily_entries(id) on delete cascade,
+  task_id text references tasks(id) on delete cascade,
+  plan text default ''
+);
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+create table scheduled_tasks (
+  id text primary key,
+  task_id text references tasks(id) on delete cascade,
+  start_date text not null,
+  end_date text not null default ''
+  plan text default ''
+);
+```
+
+### 5. 開発サーバーを起動
+```bash
+npm run dev
+```
+
+ブラウザで [http://localhost:3000](http://localhost:3000) を開く。
