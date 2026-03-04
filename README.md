@@ -92,3 +92,8 @@ npm run dev
 ```
 
 ブラウザで [http://localhost:3000](http://localhost:3000) を開く。
+
+### ToDo
+- タスク・カテゴリの名称変更
+- ログイン機能
+- 
