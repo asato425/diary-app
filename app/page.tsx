@@ -42,6 +42,7 @@ export default function Home() {
   const [newScheduleStartDate, setNewScheduleStartDate] = useState("");
   const [newScheduleEndDate, setNewScheduleEndDate] = useState("");
   const [newSchedulePlan, setNewSchedulePlan] = useState("");
+  const [tomorrowScheduled, setTomorrowScheduled] = useState<ScheduledTask[]>([]);
 
   const todayDate = new Date();
   const today = todayDate.toLocaleDateString("ja-JP");
@@ -70,18 +71,35 @@ export default function Home() {
         setMemo(existing.memo);
         setTomorrowTasks(existing.tomorrowTasks);
       } else {
-        const initialLogs: TaskLog[] = (yesterday?.tomorrowTasks ?? []).map((t) => ({
+        // 昨日の「明日やること」から引き継ぎ
+        const fromYesterday: TaskLog[] = (yesterday?.tomorrowTasks ?? []).map((t) => ({
           taskId: t.taskId,
           plan: t.plan,
           content: "",
           achievement: "not_done",
           minutes: 0,
         }));
-        setTaskLogs(initialLogs);
+
+        // 予定管理から今日が該当する予定を取得
+        const fromSchedule = await getScheduledTasksForDate(today);
+        const fromScheduleLogs: TaskLog[] = fromSchedule
+          .filter((s) => !fromYesterday.some((l) => l.taskId === s.taskId))
+          .map((s) => ({
+            taskId: s.taskId,
+            plan: s.plan,
+            content: "",
+            achievement: "not_done",
+            minutes: 0,
+          }));
+
+        setTaskLogs([...fromYesterday, ...fromScheduleLogs]);
         setTomorrowTasks([]);
       }
-      const scheduled = await getScheduledTasks();
-      setScheduledTasks(scheduled);
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split("T")[0];
+      const scheduledForTomorrow = await getScheduledTasksForDate(tomorrowStr);
+      setTomorrowScheduled(scheduledForTomorrow);
       setLoading(false);
     };
     load();
@@ -270,7 +288,55 @@ export default function Home() {
           onUpdatePlan={updateTomorrowPlan}
         />
       </section>
-
+      {/* 予定管理からの明日の予定 */}
+      {tomorrowScheduled.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-lg font-semibold text-zinc-700">明日の予定（予定管理より）</h2>
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <p className="text-xs font-medium text-zinc-400 px-4 pt-4 pb-2">登録済み</p>
+            <div className="flex flex-col divide-y divide-zinc-50">
+              {tomorrowScheduled.map((s) => {
+                const task = getTask(s.taskId);
+                const category = task ? getCategory(task.categoryId) : null;
+                if (!task) return null;
+                return (
+                  <div key={s.id} className="px-4 py-3 flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      {category && (
+                        <span
+                          className="w-2 h-2 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: category.color }}
+                        />
+                      )}
+                      <span className="text-sm font-medium text-zinc-700">{task.name}</span>
+                      {category && (
+                        <span className="text-xs text-zinc-400">{category.name}</span>
+                      )}
+                      <span className="text-xs text-zinc-400 ml-auto">
+                        {s.startDate}{s.startDate !== s.endDate ? ` 〜 ${s.endDate}` : ""}
+                      </span>
+                    </div>
+                    <input
+                      type="text"
+                      value={s.plan}
+                      onChange={async (e) => {
+                        const updated = tomorrowScheduled.map((t) =>
+                          t.id === s.id ? { ...t, plan: e.target.value } : t
+                        );
+                        setTomorrowScheduled(updated);
+                        const target = updated.find((t) => t.id === s.id);
+                        if (target) await saveScheduledTask(target);
+                      }}
+                      placeholder="予定内容"
+                      className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
       {/* メモ */}
       <section className="flex flex-col gap-3">
         <h2 className="text-lg font-semibold text-zinc-700">メモ</h2>
