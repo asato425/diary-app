@@ -7,11 +7,11 @@ import {
   TomorrowTask,
   DailyEntry,
   getTasks,
+  getCategories,
   getEntries,
-  saveEntries,
+  saveEntry,
   getYesterdayEntry,
   Category,
-  getCategories,
 } from "./lib/storage";
 import TomorrowTaskSelector from "./components/TomorrowTaskSelector";
 
@@ -30,36 +30,41 @@ export default function Home() {
   const [memo, setMemo] = useState("");
   const [tomorrowTasks, setTomorrowTasks] = useState<TomorrowTask[]>([]);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const today = new Date().toLocaleDateString("ja-JP");
 
   useEffect(() => {
-    const allTasks = getTasks();
-    const allCategories = getCategories();
-    const allEntries = getEntries();
-    const yesterday = getYesterdayEntry();
+    const load = async () => {
+      const allTasks = await getTasks();
+      const allCategories = await getCategories();
+      const allEntries = await getEntries();
+      const yesterday = await getYesterdayEntry();
 
-    setTasks(allTasks);
-    setCategories(allCategories);
+      setTasks(allTasks);
+      setCategories(allCategories);
 
-    const existing = allEntries.find((e) => e.date === today);
-    if (existing) {
-      setTodayEntry(existing);
-      setTaskLogs(existing.taskLogs);
-      setLearned(existing.learned);
-      setMemo(existing.memo);
-      setTomorrowTasks(existing.tomorrowTasks);
-    } else {
-      const initialLogs: TaskLog[] = (yesterday?.tomorrowTasks ?? []).map((t) => ({
-        taskId: t.taskId,
-        plan: t.plan,
-        content: "",
-        achievement: "not_done",
-        minutes: 0,
-      }));
-      setTaskLogs(initialLogs);
-      setTomorrowTasks([]);
-    }
+      const existing = allEntries.find((e) => e.date === today);
+      if (existing) {
+        setTodayEntry(existing);
+        setTaskLogs(existing.taskLogs);
+        setLearned(existing.learned);
+        setMemo(existing.memo);
+        setTomorrowTasks(existing.tomorrowTasks);
+      } else {
+        const initialLogs: TaskLog[] = (yesterday?.tomorrowTasks ?? []).map((t) => ({
+          taskId: t.taskId,
+          plan: t.plan,
+          content: "",
+          achievement: "not_done",
+          minutes: 0,
+        }));
+        setTaskLogs(initialLogs);
+        setTomorrowTasks([]);
+      }
+      setLoading(false);
+    };
+    load();
   }, []);
 
   const updateTaskLog = (taskId: string, field: keyof TaskLog, value: string | number) => {
@@ -82,7 +87,7 @@ export default function Home() {
     );
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const entry: DailyEntry = {
       id: todayEntry?.id ?? Date.now().toString(),
       date: today,
@@ -91,9 +96,7 @@ export default function Home() {
       memo,
       tomorrowTasks,
     };
-    const allEntries = getEntries();
-    const filtered = allEntries.filter((e) => e.date !== today);
-    saveEntries([...filtered, entry]);
+    await saveEntry(entry);
     setTodayEntry(entry);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -101,6 +104,10 @@ export default function Home() {
 
   const getTask = (taskId: string) => tasks.find((t) => t.id === taskId);
   const getCategory = (categoryId: string) => categories.find((c) => c.id === categoryId);
+
+  if (loading) {
+    return <div className="text-sm text-zinc-400">読み込み中...</div>;
+  }
 
   return (
     <div className="flex flex-col gap-8">
@@ -136,7 +143,6 @@ export default function Home() {
                       <span className="text-xs text-zinc-400">{category.name}</span>
                     )}
                   </div>
-                  {/* 前日の予定 */}
                   {log.plan && (
                     <div className="text-xs text-zinc-400 bg-zinc-50 rounded-lg px-3 py-2">
                       予定：{log.plan}

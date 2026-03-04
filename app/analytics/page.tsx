@@ -17,11 +17,16 @@ export default function AnalyticsPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [period, setPeriod] = useState<Period>("week");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setEntries(getEntries());
-    setTasks(getTasks());
-    setCategories(getCategories());
+    const load = async () => {
+      setEntries(await getEntries());
+      setTasks(await getTasks());
+      setCategories(await getCategories());
+      setLoading(false);
+    };
+    load();
   }, []);
 
   const getTask = (taskId: string) => tasks.find((t) => t.id === taskId);
@@ -46,7 +51,6 @@ export default function AnalyticsPage() {
 
   const filtered = getFilteredEntries();
 
-  // タスクごとの統計
   type TaskStat = {
     taskId: string;
     total: number;
@@ -70,7 +74,6 @@ export default function AnalyticsPage() {
     };
   }).filter((s) => s.total > 0);
 
-  // カテゴリごとの合計時間
   type CategoryStat = {
     categoryId: string;
     totalMinutes: number;
@@ -78,19 +81,22 @@ export default function AnalyticsPage() {
 
   const categoryStats: CategoryStat[] = categories.map((cat) => {
     const catTasks = tasks.filter((t) => t.categoryId === cat.id);
-    const totalMinutes = filtered.flatMap((e) =>
-      e.taskLogs.filter((l) => catTasks.some((t) => t.id === l.taskId))
-    ).reduce((sum, l) => sum + (l.minutes || 0), 0);
+    const totalMinutes = filtered
+      .flatMap((e) => e.taskLogs.filter((l) => catTasks.some((t) => t.id === l.taskId)))
+      .reduce((sum, l) => sum + (l.minutes || 0), 0);
     return { categoryId: cat.id, totalMinutes };
   }).filter((s) => s.totalMinutes > 0);
 
   const maxMinutes = Math.max(...categoryStats.map((s) => s.totalMinutes), 1);
 
+  if (loading) {
+    return <div className="text-sm text-zinc-400">読み込み中...</div>;
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <h1 className="text-2xl font-bold text-zinc-800">分析</h1>
 
-      {/* 期間切替 */}
       <div className="flex rounded-lg overflow-hidden border border-zinc-200 w-fit">
         {(["week", "month", "all"] as Period[]).map((p) => (
           <button
@@ -151,7 +157,7 @@ export default function AnalyticsPage() {
         </div>
       </section>
 
-      {/* タスクごとの達成度 */}
+      {/* タスク別達成度 */}
       <section className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-zinc-700">タスク別 達成度</h2>
         <div className="bg-white rounded-xl p-6 shadow-sm flex flex-col gap-4">
@@ -176,7 +182,6 @@ export default function AnalyticsPage() {
                     <span className="text-sm font-medium text-zinc-700">{task.name}</span>
                     <span className="text-xs text-zinc-400 ml-auto">{stat.total}回記録</span>
                   </div>
-                  {/* 達成度バー */}
                   <div className="h-3 bg-zinc-100 rounded-full overflow-hidden flex">
                     <div
                       className="h-full bg-green-400 transition-all"

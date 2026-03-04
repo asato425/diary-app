@@ -30,11 +30,16 @@ export default function HistoryPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setEntries(getEntries());
-    setTasks(getTasks());
-    setCategories(getCategories());
+    const load = async () => {
+      setEntries(await getEntries());
+      setTasks(await getTasks());
+      setCategories(await getCategories());
+      setLoading(false);
+    };
+    load();
   }, []);
 
   const getTask = (taskId: string) => tasks.find((t) => t.id === taskId);
@@ -44,10 +49,9 @@ export default function HistoryPage() {
     const sorted = [...entries].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-
     if (viewMode === "week") {
       const start = new Date(selectedDate);
-      start.setDate(start.getDate() - start.getDay() + 1); // 月曜始まり
+      start.setDate(start.getDate() - start.getDay() + 1);
       const end = new Date(start);
       end.setDate(start.getDate() + 6);
       return sorted.filter((e) => {
@@ -93,11 +97,14 @@ export default function HistoryPage() {
 
   const filtered = getFilteredEntries();
 
+  if (loading) {
+    return <div className="text-sm text-zinc-400">読み込み中...</div>;
+  }
+
   return (
     <div className="flex flex-col gap-8">
       <h1 className="text-2xl font-bold text-zinc-800">履歴</h1>
 
-      {/* 表示切替・ナビ */}
       <div className="flex items-center gap-4">
         <div className="flex rounded-lg overflow-hidden border border-zinc-200">
           {(["week", "month"] as ViewMode[]).map((mode) => (
@@ -131,7 +138,6 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      {/* 記録一覧 */}
       {filtered.length === 0 ? (
         <div className="bg-white rounded-xl p-6 shadow-sm text-sm text-zinc-400">
           この期間の記録はありません
@@ -141,8 +147,6 @@ export default function HistoryPage() {
           {filtered.map((entry) => (
             <div key={entry.id} className="bg-white rounded-xl p-6 shadow-sm flex flex-col gap-4">
               <p className="text-sm font-medium text-zinc-500">{entry.date}</p>
-
-              {/* タスクログ */}
               {entry.taskLogs.length > 0 && (
                 <div className="flex flex-col gap-2">
                   {entry.taskLogs.map((log) => {
@@ -165,8 +169,11 @@ export default function HistoryPage() {
                             {ACHIEVEMENT_LABEL[log.achievement]}
                           </span>
                         </div>
+                        {log.plan && (
+                          <p className="text-xs text-zinc-400 ml-4">予定：{log.plan}</p>
+                        )}
                         {log.content && (
-                          <p className="text-xs text-zinc-500 ml-4">{log.content}</p>
+                          <p className="text-xs text-zinc-500 ml-4">実績：{log.content}</p>
                         )}
                         {log.minutes > 0 && (
                           <p className="text-xs text-zinc-400 ml-4">{log.minutes}分</p>
@@ -176,16 +183,12 @@ export default function HistoryPage() {
                   })}
                 </div>
               )}
-
-              {/* 学んだこと */}
               {entry.learned && (
                 <div>
                   <p className="text-xs font-medium text-zinc-400 mb-1">学んだこと</p>
                   <p className="text-sm text-zinc-700 whitespace-pre-wrap">{entry.learned}</p>
                 </div>
               )}
-
-              {/* メモ */}
               {entry.memo && (
                 <div>
                   <p className="text-xs font-medium text-zinc-400 mb-1">メモ</p>

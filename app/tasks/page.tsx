@@ -5,10 +5,13 @@ import {
   Category,
   Task,
   getCategories,
-  saveCategories,
+  saveCategory,
+  deleteCategory,
   getTasks,
-  saveTasks,
+  saveTask,
+  deleteTask,
 } from "../lib/storage";
+import CategoryDropdown from "../components/CategoryDropdown";
 
 const PRESET_COLORS = [
   { label: "レッド", value: "#ef4444" },
@@ -26,6 +29,7 @@ const PRESET_COLORS = [
 export default function TasksPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryColor, setNewCategoryColor] = useState(PRESET_COLORS[5].value);
@@ -34,48 +38,52 @@ export default function TasksPage() {
   const [newTaskCategoryId, setNewTaskCategoryId] = useState("");
 
   useEffect(() => {
-    setCategories(getCategories());
-    setTasks(getTasks());
+    const load = async () => {
+      setCategories(await getCategories());
+      setTasks(await getTasks());
+      setLoading(false);
+    };
+    load();
   }, []);
 
-  const addCategory = () => {
+  const addCategory = async () => {
     if (!newCategoryName.trim()) return;
     const category: Category = {
       id: Date.now().toString(),
       name: newCategoryName.trim(),
       color: newCategoryColor,
     };
-    const updated = [...categories, category];
-    setCategories(updated);
-    saveCategories(updated);
+    await saveCategory(category);
+    setCategories((prev) => [...prev, category]);
     setNewCategoryName("");
     setNewCategoryColor(PRESET_COLORS[5].value);
   };
 
-  const deleteCategory = (id: string) => {
-    const updated = categories.filter((c) => c.id !== id);
-    setCategories(updated);
-    saveCategories(updated);
+  const handleDeleteCategory = async (id: string) => {
+    await deleteCategory(id);
+    setCategories((prev) => prev.filter((c) => c.id !== id));
   };
 
-  const addTask = () => {
+  const addTask = async () => {
     if (!newTaskName.trim() || !newTaskCategoryId) return;
     const task: Task = {
       id: Date.now().toString(),
       name: newTaskName.trim(),
       categoryId: newTaskCategoryId,
     };
-    const updated = [...tasks, task];
-    setTasks(updated);
-    saveTasks(updated);
+    await saveTask(task);
+    setTasks((prev) => [...prev, task]);
     setNewTaskName("");
   };
 
-  const deleteTask = (id: string) => {
-    const updated = tasks.filter((t) => t.id !== id);
-    setTasks(updated);
-    saveTasks(updated);
+  const handleDeleteTask = async (id: string) => {
+    await deleteTask(id);
+    setTasks((prev) => prev.filter((t) => t.id !== id));
   };
+
+  if (loading) {
+    return <div className="text-sm text-zinc-400">読み込み中...</div>;
+  }
 
   return (
     <div className="flex flex-col gap-10">
@@ -85,7 +93,6 @@ export default function TasksPage() {
       <section className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-zinc-700">カテゴリ</h2>
         <div className="bg-white rounded-xl p-6 shadow-sm flex flex-col gap-5">
-          {/* 入力 */}
           <div className="flex flex-col gap-3">
             <input
               type="text"
@@ -94,7 +101,6 @@ export default function TasksPage() {
               onChange={(e) => setNewCategoryName(e.target.value)}
               className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
             />
-            {/* カラーパレット */}
             <div className="flex gap-2 flex-wrap">
               {PRESET_COLORS.map((color) => (
                 <button
@@ -117,8 +123,6 @@ export default function TasksPage() {
               追加
             </button>
           </div>
-
-          {/* 一覧 */}
           <div className="flex flex-col gap-2">
             {categories.length === 0 && (
               <p className="text-sm text-zinc-400">カテゴリがありません</p>
@@ -136,7 +140,7 @@ export default function TasksPage() {
                   <span className="text-sm text-zinc-700">{cat.name}</span>
                 </div>
                 <button
-                  onClick={() => deleteCategory(cat.id)}
+                  onClick={() => handleDeleteCategory(cat.id)}
                   className="text-xs text-zinc-400 hover:text-red-500 transition-colors"
                 >
                   削除
@@ -159,18 +163,11 @@ export default function TasksPage() {
               onChange={(e) => setNewTaskName(e.target.value)}
               className="flex-1 border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
             />
-            <select
+            <CategoryDropdown
+              categories={categories}
               value={newTaskCategoryId}
-              onChange={(e) => setNewTaskCategoryId(e.target.value)}
-              className="border border-zinc-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-300"
-            >
-              <option value="">カテゴリ選択</option>
-              {categories.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.name}
-                </option>
-              ))}
-            </select>
+              onChange={setNewTaskCategoryId}
+            />
             <button
               onClick={addTask}
               className="bg-zinc-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-zinc-700 transition-colors"
@@ -178,8 +175,6 @@ export default function TasksPage() {
               追加
             </button>
           </div>
-
-          {/* カテゴリ別タスク一覧 */}
           <div className="flex flex-col gap-1">
             {tasks.length === 0 && (
               <p className="text-sm text-zinc-400">タスクがありません</p>
@@ -203,7 +198,7 @@ export default function TasksPage() {
                     >
                       <span className="text-sm text-zinc-700">{task.name}</span>
                       <button
-                        onClick={() => deleteTask(task.id)}
+                        onClick={() => handleDeleteTask(task.id)}
                         className="text-xs text-zinc-400 hover:text-red-500 transition-colors"
                       >
                         削除
@@ -216,18 +211,6 @@ export default function TasksPage() {
           </div>
         </div>
       </section>
-
-      {/* タスク追加時のカテゴリプレビュー */}
-      {newTaskCategoryId && (() => {
-        const cat = categories.find((c) => c.id === newTaskCategoryId);
-        if (!cat) return null;
-        return (
-          <div className="fixed bottom-6 right-6 bg-white rounded-xl shadow-lg px-4 py-3 flex items-center gap-2 text-sm text-zinc-700">
-            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
-            {cat.name}に追加
-          </div>
-        );
-      })()}
     </div>
   );
 }
