@@ -14,6 +14,7 @@ import {
   Category,
 } from "./lib/storage";
 import TomorrowTaskSelector from "./components/TomorrowTaskSelector";
+import { SkeletonBlock, SkeletonCard } from "./components/Skeleton";
 
 const ACHIEVEMENT_OPTIONS = [
   { value: "done", label: "達成", color: "bg-green-100 text-green-700 border-green-300" },
@@ -106,7 +107,14 @@ export default function Home() {
   const getCategory = (categoryId: string) => categories.find((c) => c.id === categoryId);
 
   if (loading) {
-    return <div className="text-sm text-zinc-400">読み込み中...</div>;
+    return (
+      <div className="flex flex-col gap-8">
+        <SkeletonBlock className="h-8 w-40" />
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+    );
   }
 
   return (

@@ -9,6 +9,7 @@ import {
   getTasks,
   getCategories,
 } from "../lib/storage";
+import { SkeletonBlock, SkeletonCard } from "../components/Skeleton";
 
 type ViewMode = "week" | "month";
 
@@ -98,7 +99,13 @@ export default function HistoryPage() {
   const filtered = getFilteredEntries();
 
   if (loading) {
-    return <div className="text-sm text-zinc-400">読み込み中...</div>;
+    return (
+      <div className="flex flex-col gap-8">
+        <SkeletonBlock className="h-8 w-40" />
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+    );
   }
 
   return (

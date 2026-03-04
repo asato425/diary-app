@@ -12,6 +12,7 @@ import {
   deleteTask,
 } from "../lib/storage";
 import CategoryDropdown from "../components/CategoryDropdown";
+import { SkeletonBlock, SkeletonCard } from "../components/Skeleton";
 
 const PRESET_COLORS = [
   { label: "レッド", value: "#ef4444" },
@@ -82,7 +83,13 @@ export default function TasksPage() {
   };
 
   if (loading) {
-    return <div className="text-sm text-zinc-400">読み込み中...</div>;
+    return (
+      <div className="flex flex-col gap-8">
+        <SkeletonBlock className="h-8 w-40" />
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+    );
   }
 
   return (
